@@ -5,6 +5,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from .validators import validate_file_extensions
+
 from .serializers import SignUpSerializer, UserSerializer
 
 
@@ -58,6 +60,31 @@ def update_user(request):
         user.password = make_password((data['password']))
 
     user.save()
+    serializer = UserSerializer(user, many=False)
+
+    return Response(serializer.data)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def upload_resume(request):
+    user = request.user
+    resume = request.FILES['resume']
+
+    if resume == '':
+        return Response({
+            'error': 'Please upload your resume.'
+        })
+    
+    is_valid_file = validate_file_extensions(resume.name)
+    
+    if not is_valid_file:
+        return Response({
+            'error': 'Please upload only pdf file.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    user.userprofile.resume = resume
+    user.userprofile.save()
+
     serializer = UserSerializer(user, many=False)
 
     return Response(serializer.data)
